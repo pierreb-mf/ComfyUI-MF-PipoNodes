@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.1.0
+# Version: 1.2.0
 # --
 
 import random
@@ -446,6 +446,94 @@ class MF_ModuloAdvanced:
 
 
 # ============================================================================
+# SHOT HELPER
+# ============================================================================
+
+class MF_ShotHelper:
+    """
+    A ComfyUI node that generates sequence and shot numbers based on a driving primitive
+    and beat points. Sequences increment at each beat, and shot counters reset per sequence.
+    """
+    
+    CATEGORY = "MF_PipoNodes/Sequencing"
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "step": ("INT", {
+                    "default": 0,
+                    "forceInput": True
+                }),
+                "beats": ("STRING", {
+                    "default": "",
+                    "forceInput": True
+                }),
+            }
+        }
+    
+    RETURN_TYPES = ("INT", "STRING", "INT", "STRING", "STRING")
+    RETURN_NAMES = ("sequence_int", "sequence_str", "shot_int", "shot_str", "shot_name")
+    FUNCTION = "calculate_sequence_shot"
+    
+    def calculate_sequence_shot(self, step, beats):
+        """
+        Calculate sequence and shot numbers based on current step and beat points.
+        
+        Args:
+            step: Current step number (driving primitive)
+            beats: Beat points in various formats:
+                   - Comma-separated: "3,8,15"
+                   - Newline-separated: "3\\n8\\n15"
+                   - Array format: "[3,8,15]"
+        
+        Returns:
+            tuple: (sequence_int, sequence_str, shot_int, shot_str, shot_name)
+                   shot_name format: "seq01_shot01"
+        """
+        # Parse beats string into sorted list of integers
+        beat_list = []
+        if beats.strip():
+            try:
+                # Remove array brackets if present
+                beats_clean = beats.strip()
+                if beats_clean.startswith('[') and beats_clean.endswith(']'):
+                    beats_clean = beats_clean[1:-1]
+                
+                # Replace newlines with commas for unified parsing
+                beats_clean = beats_clean.replace('\n', ',')
+                
+                # Split by comma and parse integers
+                beat_list = sorted([int(b.strip()) for b in beats_clean.split(",") if b.strip()])
+            except ValueError:
+                print(f"⚠️ [MF_ShotHelper] Invalid beats format '{beats}'. Using empty beats.")
+                beat_list = []
+        
+        # Determine which sequence we're in
+        sequence_num = 1
+        shot_start = 0
+        
+        for beat in beat_list:
+            if step >= beat:
+                sequence_num += 1
+                shot_start = beat
+            else:
+                break
+        
+        # Calculate shot number within the current sequence
+        shot_num = step - shot_start + 1
+        
+        # Generate formatted outputs
+        sequence_str = str(sequence_num)
+        shot_str = str(shot_num)
+        shot_name = f"seq{sequence_num:02d}_shot{shot_num:02d}"
+        
+        print(f"🎬 [MF_ShotHelper] Step {step}: {shot_name}")
+        
+        return (sequence_num, sequence_str, shot_num, shot_str, shot_name)
+
+
+# ============================================================================
 # NODE REGISTRATION
 # ============================================================================
 
@@ -456,7 +544,8 @@ NODE_CLASS_MAPPINGS = {
     "MF_LogFile": MF_LogFile,
     "MF_LogReader": MF_LogReader,
     "MF_Modulo": MF_Modulo,
-    "MF_ModuloAdvanced": MF_ModuloAdvanced
+    "MF_ModuloAdvanced": MF_ModuloAdvanced,
+    "MF_ShotHelper": MF_ShotHelper
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -466,7 +555,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MF_LogFile": "MF Log File",
     "MF_LogReader": "MF Log Reader",
     "MF_Modulo": "MF Modulo",
-    "MF_ModuloAdvanced": "MF Modulo Advanced"
+    "MF_ModuloAdvanced": "MF Modulo Advanced",
+    "MF_ShotHelper": "MF Shot Helper"
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
