@@ -2,7 +2,7 @@
 MF PipoNodes - ComfyUI Custom Nodes
 Collection of utility nodes and workflow management tools
 Author: Pierre Biet | Moment Factory | 2025
-Version: 1.4.3
+Version: 1.4.4
 """
 
 print("\n" + "=" * 70)

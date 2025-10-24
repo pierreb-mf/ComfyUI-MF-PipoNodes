@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.4.3 (Fixed MF Save Data and Show Data)
+# Version: 1.4.4 (Strip markdown fences + Fix widget display)
 # --
 
 import random
@@ -859,6 +859,22 @@ class MFSaveData:
     A node that saves string data to various file formats
     """
     
+    @staticmethod
+    def _clean_markdown_fences(data):
+        """Remove markdown code fences if present"""
+        if isinstance(data, str):
+            data = data.strip()
+            # Remove opening code fence (```json, ```xml, etc.)
+            if data.startswith('```'):
+                lines = data.split('\n')
+                if lines[0].startswith('```'):
+                    lines = lines[1:]  # Remove first line
+                # Remove closing code fence
+                if lines and lines[-1].strip() == '```':
+                    lines = lines[:-1]  # Remove last line
+                data = '\n'.join(lines)
+        return data
+    
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -878,6 +894,9 @@ class MFSaveData:
 
     def save_data(self, data, output_path, filename, format):
         try:
+            # Clean data - remove markdown code fences if present
+            data = self._clean_markdown_fences(data)
+            
             # Create output directory if it doesn't exist
             os.makedirs(output_path, exist_ok=True)
             
@@ -1076,22 +1095,40 @@ class MFShowData:
     CATEGORY = "MF Data"
     OUTPUT_NODE = True
 
+    @staticmethod
+    def _clean_data(data):
+        """Remove markdown code fences if present"""
+        if isinstance(data, str):
+            data = data.strip()
+            # Remove opening code fence (```json, ```python, etc.)
+            if data.startswith('```'):
+                lines = data.split('\n')
+                if lines[0].startswith('```'):
+                    lines = lines[1:]  # Remove first line
+                # Remove closing code fence
+                if lines and lines[-1].strip() == '```':
+                    lines = lines[:-1]  # Remove last line
+                data = '\n'.join(lines)
+        return data
+    
     def show_data(self, data, unique_id=None):
         """Display the data in a text widget and pass it through"""
+        # Clean the data (remove markdown code fences if present)
+        cleaned_data = self._clean_data(data)
+        
         # Print to console
         print("=" * 50)
         print("[MF Show Data]")
         print("=" * 50)
-        print(data)
+        print(cleaned_data)
         print("=" * 50)
         
-        # Return data with UI display
-        # This creates a text display in the node
+        # Return cleaned data with UI display
         return {
             "ui": {
-                "text": (data,)
+                "text": (cleaned_data,)
             }, 
-            "result": (data,)
+            "result": (cleaned_data,)
         }
 
 # ============================================================================

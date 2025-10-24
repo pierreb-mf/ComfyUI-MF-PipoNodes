@@ -775,46 +775,69 @@ app.registerExtension({
         // MF SHOW DATA
         // ====================================================================
         if (nodeData.name === "MFShowData") {
+            // Store original functions
             const onNodeCreated = nodeType.prototype.onNodeCreated;
-            
-            nodeType.prototype.onNodeCreated = function () {
-                const r = onNodeCreated?.apply(this, arguments);
-                
-                // Create the display widget immediately
-                const widget = ComfyWidgets["STRING"](
-                    this, 
-                    "display_text", 
-                    ["STRING", { multiline: true }], 
-                    app
-                ).widget;
-                
-                widget.inputEl.readOnly = true;
-                widget.inputEl.style.opacity = 0.7;
-                widget.inputEl.style.fontSize = "10pt";
-                widget.inputEl.style.fontFamily = "monospace";
-                widget.inputEl.style.minHeight = "60px";
-                widget.value = "Waiting for data...";
-                
-                return r;
-            };
-            
             const onExecuted = nodeType.prototype.onExecuted;
             
-            nodeType.prototype.onExecuted = function (message) {
-                onExecuted?.apply(this, arguments);
+            // Override onNodeCreated to add widget immediately
+            nodeType.prototype.onNodeCreated = function () {
+                const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
-                if (message.text) {
+                // Add the text display widget
+                const widget = this.addWidget(
+                    "text",
+                    "display_text",
+                    "Waiting for data...",
+                    () => {},
+                    {
+                        multiline: true,
+                        readonly: true
+                    }
+                );
+                
+                // Style the widget
+                if (widget.inputEl) {
+                    widget.inputEl.readOnly = true;
+                    widget.inputEl.disabled = true;
+                    widget.inputEl.style.opacity = "0.85";
+                    widget.inputEl.style.fontSize = "10pt";
+                    widget.inputEl.style.fontFamily = "monospace";
+                    widget.inputEl.style.backgroundColor = "#1a1a1a";
+                    widget.inputEl.style.border = "1px solid #444";
+                    widget.inputEl.style.padding = "8px";
+                    widget.inputEl.rows = 5;
+                }
+                
+                // Force node size update
+                this.setSize([Math.max(this.size[0], 400), this.computeSize()[1]]);
+                
+                return result;
+            };
+            
+            // Override onExecuted to update widget content
+            nodeType.prototype.onExecuted = function (message) {
+                if (onExecuted) {
+                    onExecuted.apply(this, arguments);
+                }
+                
+                if (message && message.text) {
                     const widget = this.widgets?.find(w => w.name === "display_text");
                     
                     if (widget) {
                         // Update the text content
-                        const text = message.text[0];
+                        const text = message.text[0] || "";
                         widget.value = text;
                         
-                        // Auto-resize based on content
-                        const lines = text.split('\n').length;
-                        widget.inputEl.rows = Math.min(Math.max(lines, 3), 20);
+                        // Update the input element directly
+                        if (widget.inputEl) {
+                            widget.inputEl.value = text;
+                            
+                            // Auto-resize based on content
+                            const lines = text.split('\n').length;
+                            widget.inputEl.rows = Math.min(Math.max(lines, 5), 20);
+                        }
                         
+                        // Update node size
                         this.setSize([
                             Math.max(this.size[0], 400),
                             this.computeSize()[1]
