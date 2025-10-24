@@ -772,7 +772,7 @@ app.registerExtension({
         }
 
         // ====================================================================
-        // MF SHOW DATA
+        // MF SHOW DATA (Similar to pythongosssss Show Text)
         // ====================================================================
         if (nodeData.name === "MF_ShowData") {
             const onExecuted = nodeType.prototype.onExecuted;
@@ -783,51 +783,35 @@ app.registerExtension({
                 if (message && message.text) {
                     const text = message.text[0] || "";
                     
-                    // Remove old text widget if exists
+                    // Remove old widgets
                     if (this.widgets) {
-                        const existingWidget = this.widgets.find(w => w.name === "display_text");
-                        if (existingWidget) {
-                            const index = this.widgets.indexOf(existingWidget);
-                            if (index > -1) {
-                                this.widgets.splice(index, 1);
+                        for (let i = this.widgets.length - 1; i >= 0; i--) {
+                            if (this.widgets[i].name === "display_text") {
+                                this.widgets.splice(i, 1);
                             }
                         }
                     }
                     
-                    // Create a custom display widget using ComfyWidgets
+                    // Create widget using ComfyWidgets (same as Show Text)
                     const widget = ComfyWidgets["STRING"](
                         this,
                         "display_text",
-                        ["STRING", { multiline: true, default: text }],
+                        ["STRING", { multiline: true }],
                         app
                     ).widget;
                     
-                    // Make it completely read-only
+                    // Set the value
+                    widget.value = text;
+                    
+                    // Make read-only and style it
                     widget.inputEl.readOnly = true;
-                    widget.inputEl.disabled = true;
                     widget.inputEl.style.opacity = "0.6";
-                    widget.inputEl.style.cursor = "default";
                     widget.inputEl.style.fontSize = "9pt";
                     widget.inputEl.style.fontFamily = "monospace";
-                    widget.inputEl.style.backgroundColor = "#0a0a0a";
-                    widget.inputEl.style.color = "#888";
-                    widget.inputEl.style.border = "1px solid #333";
-                    widget.inputEl.style.padding = "6px";
-                    widget.inputEl.style.resize = "none";
                     
-                    // Set the text
-                    widget.value = text;
-                    widget.inputEl.value = text;
-                    
-                    // Auto-resize
+                    // Auto-adjust rows (not node size)
                     const lines = text.split('\n').length;
                     widget.inputEl.rows = Math.min(Math.max(lines, 5), 25);
-                    
-                    // Update node size
-                    this.setSize([
-                        Math.max(this.size[0], 420),
-                        this.computeSize()[1]
-                    ]);
                 }
             };
         }
