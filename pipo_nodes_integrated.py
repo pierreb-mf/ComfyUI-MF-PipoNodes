@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.4.0 (Added Data Nodes: Save, Read, Show)
+# Version: 1.4.1 (Fixed __init__.py import error)
 # --
 
 import random
