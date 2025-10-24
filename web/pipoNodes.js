@@ -775,74 +775,59 @@ app.registerExtension({
         // MF SHOW DATA
         // ====================================================================
         if (nodeData.name === "MF_ShowData") {
-            // Store original functions
-            const onNodeCreated = nodeType.prototype.onNodeCreated;
             const onExecuted = nodeType.prototype.onExecuted;
             
-            // Override onNodeCreated to add widget immediately
-            nodeType.prototype.onNodeCreated = function () {
-                const result = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-                
-                // Add the text display widget
-                const widget = this.addWidget(
-                    "text",
-                    "display_text",
-                    "Waiting for data...",
-                    () => {},
-                    {
-                        multiline: true,
-                        readonly: true
-                    }
-                );
-                
-                // Style the widget
-                if (widget.inputEl) {
-                    widget.inputEl.readOnly = true;
-                    widget.inputEl.disabled = true;
-                    widget.inputEl.style.opacity = "0.85";
-                    widget.inputEl.style.fontSize = "10pt";
-                    widget.inputEl.style.fontFamily = "monospace";
-                    widget.inputEl.style.backgroundColor = "#1a1a1a";
-                    widget.inputEl.style.border = "1px solid #444";
-                    widget.inputEl.style.padding = "8px";
-                    widget.inputEl.rows = 5;
-                }
-                
-                // Force node size update
-                this.setSize([Math.max(this.size[0], 400), this.computeSize()[1]]);
-                
-                return result;
-            };
-            
-            // Override onExecuted to update widget content
             nodeType.prototype.onExecuted = function (message) {
-                if (onExecuted) {
-                    onExecuted.apply(this, arguments);
-                }
+                onExecuted?.apply(this, arguments);
                 
                 if (message && message.text) {
-                    const widget = this.widgets?.find(w => w.name === "display_text");
+                    const text = message.text[0] || "";
                     
-                    if (widget) {
-                        // Update the text content
-                        const text = message.text[0] || "";
-                        widget.value = text;
-                        
-                        // Update the input element directly
-                        if (widget.inputEl) {
-                            widget.inputEl.value = text;
-                            
-                            // Auto-resize based on content
-                            const lines = text.split('\n').length;
-                            widget.inputEl.rows = Math.min(Math.max(lines, 5), 20);
+                    // Remove old text widget if exists
+                    if (this.widgets) {
+                        const existingWidget = this.widgets.find(w => w.name === "display_text");
+                        if (existingWidget) {
+                            const index = this.widgets.indexOf(existingWidget);
+                            if (index > -1) {
+                                this.widgets.splice(index, 1);
+                            }
                         }
-                        
-                        // Update node size
-                        this.setSize([
-                            Math.max(this.size[0], 400),
-                            this.computeSize()[1]
-                        ]);
                     }
+                    
+                    // Create a custom display widget using ComfyWidgets
+                    const widget = ComfyWidgets["STRING"](
+                        this,
+                        "display_text",
+                        ["STRING", { multiline: true, default: text }],
+                        app
+                    ).widget;
+                    
+                    // Make it completely read-only
+                    widget.inputEl.readOnly = true;
+                    widget.inputEl.disabled = true;
+                    widget.inputEl.style.opacity = "0.6";
+                    widget.inputEl.style.cursor = "default";
+                    widget.inputEl.style.fontSize = "9pt";
+                    widget.inputEl.style.fontFamily = "monospace";
+                    widget.inputEl.style.backgroundColor = "#0a0a0a";
+                    widget.inputEl.style.color = "#888";
+                    widget.inputEl.style.border = "1px solid #333";
+                    widget.inputEl.style.padding = "6px";
+                    widget.inputEl.style.resize = "none";
+                    
+                    // Set the text
+                    widget.value = text;
+                    widget.inputEl.value = text;
+                    
+                    // Auto-resize
+                    const lines = text.split('\n').length;
+                    widget.inputEl.rows = Math.min(Math.max(lines, 5), 25);
+                    
+                    // Update node size
+                    this.setSize([
+                        Math.max(this.size[0], 420),
+                        this.computeSize()[1]
+                    ]);
                 }
             };
         }
