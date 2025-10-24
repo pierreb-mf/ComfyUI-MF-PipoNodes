@@ -775,38 +775,54 @@ app.registerExtension({
         // MF SHOW DATA
         // ====================================================================
         if (nodeData.name === "MFShowData") {
-                    // Add a callback for when the node is executed
-                    const onExecuted = nodeType.prototype.onExecuted;
-                    nodeType.prototype.onExecuted = function (message) {
-                        onExecuted?.apply(this, arguments);
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            
+            nodeType.prototype.onNodeCreated = function () {
+                const r = onNodeCreated?.apply(this, arguments);
+                
+                // Create the display widget immediately
+                const widget = ComfyWidgets["STRING"](
+                    this, 
+                    "display_text", 
+                    ["STRING", { multiline: true }], 
+                    app
+                ).widget;
+                
+                widget.inputEl.readOnly = true;
+                widget.inputEl.style.opacity = 0.7;
+                widget.inputEl.style.fontSize = "10pt";
+                widget.inputEl.style.fontFamily = "monospace";
+                widget.inputEl.style.minHeight = "60px";
+                widget.value = "Waiting for data...";
+                
+                return r;
+            };
+            
+            const onExecuted = nodeType.prototype.onExecuted;
+            
+            nodeType.prototype.onExecuted = function (message) {
+                onExecuted?.apply(this, arguments);
+                
+                if (message.text) {
+                    const widget = this.widgets?.find(w => w.name === "display_text");
+                    
+                    if (widget) {
+                        // Update the text content
+                        const text = message.text[0];
+                        widget.value = text;
                         
-                        if (message.text) {
-                            // Find or create the text widget
-                            let textWidget = this.widgets?.find(w => w.name === "display_text");
-                            
-                            if (!textWidget) {
-                                textWidget = ComfyWidgets["STRING"](this, "display_text", ["STRING", { multiline: true }], app).widget;
-                                textWidget.inputEl.readOnly = true;
-                                textWidget.inputEl.style.opacity = 0.7;
-                                textWidget.inputEl.style.fontSize = "10pt";
-                                textWidget.inputEl.style.fontFamily = "monospace";
-                            }
-                            
-                            // Update the text content
-                            const text = message.text[0];
-                            textWidget.value = text;
-                            
-                            // Auto-resize based on content
-                            const lines = text.split('\n').length;
-                            textWidget.inputEl.rows = Math.min(Math.max(lines, 3), 20);
-                            
-                            this.setSize([
-                                Math.max(this.size[0], 400),
-                                this.computeSize()[1]
-                            ]);
-                        }
-                    };
+                        // Auto-resize based on content
+                        const lines = text.split('\n').length;
+                        widget.inputEl.rows = Math.min(Math.max(lines, 3), 20);
+                        
+                        this.setSize([
+                            Math.max(this.size[0], 400),
+                            this.computeSize()[1]
+                        ]);
+                    }
                 }
-        
+            };
+        }
+
     },
 });

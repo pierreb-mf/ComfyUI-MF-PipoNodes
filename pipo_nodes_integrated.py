@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.4.1 (Fixed __init__.py import error)
+# Version: 1.4.3 (Fixed MF Save Data and Show Data)
 # --
 
 import random
@@ -909,9 +909,9 @@ class MFSaveData:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(parsed, f, indent=2, ensure_ascii=False)
         except json.JSONDecodeError:
-            # If not valid JSON, save as a simple string value
+            # If not valid JSON, just write the string as-is
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump({"data": data}, f, indent=2, ensure_ascii=False)
+                f.write(data)
     
     def _save_xml(self, data, filepath):
         """Save as XML"""
@@ -963,7 +963,7 @@ class MFSaveData:
         except json.JSONDecodeError:
             # Save as simple string
             with open(filepath, 'w', encoding='utf-8') as f:
-                yaml.dump({"data": data}, f, default_flow_style=False, allow_unicode=True)
+                f.write(data)
 
 
 class MFReadData:
