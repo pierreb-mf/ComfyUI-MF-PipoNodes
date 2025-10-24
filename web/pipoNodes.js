@@ -774,7 +774,7 @@ app.registerExtension({
         // ====================================================================
         // MF SHOW DATA
         // ====================================================================
-        if (nodeData.name === "MFShowData") {
+        if (nodeData.name === "MF_ShowData") {
             // Store original functions
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             const onExecuted = nodeType.prototype.onExecuted;
