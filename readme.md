@@ -2,7 +2,7 @@
 
 **A comprehensive collection of utility and quality-of-life nodes for ComfyUI workflows**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/pierreb-mf/ComfyUI-MF-PipoNodes)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/pierreb-mf/ComfyUI-MF-PipoNodes)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Compatible-orange.svg)](https://github.com/comfyanonymous/ComfyUI)
 
@@ -440,6 +440,144 @@ Loop Counter (0-10)
 
 ---
 
+
+
+---
+
+### 💾 Data Category
+
+#### **MF Save Data** ⭐ *NEW in v1.4.0*
+Save string data to various file formats (JSON, XML, CSV, YAML).
+
+**Inputs:**
+- `data` (STRING, force input) - Data to save
+- `output_path` (STRING) - Directory path (default: "output")
+- `filename` (STRING) - Filename without extension (default: "data")
+- `format` (ENUM) - File format: json, xml, csv, yaml
+
+**Outputs:**
+- `filepath` (STRING) - Path to saved file
+
+**Features:**
+- ✨ **Multi-format support:** JSON, XML, CSV, YAML
+- 📁 **Auto-directory creation:** Creates output folders if needed
+- 🔄 **Smart parsing:** Attempts to parse input as structured data
+- 🛡️ **Error handling:** Graceful fallback for invalid formats
+
+**Use Cases:**
+1. **Save LLM outputs**
+   ```
+   LLM Response → MF Save Data (JSON) → Structured storage
+   ```
+
+2. **Export workflow data**
+   ```
+   Data Processing → MF Save Data (CSV) → Excel-compatible export
+   ```
+
+3. **Configuration files**
+   ```
+   Settings → MF Save Data (YAML) → Human-readable config
+   ```
+
+4. **API responses**
+   ```
+   API Data → MF Save Data (JSON) → Persistent cache
+   ```
+
+---
+
+#### **MF Read Data** ⭐ *NEW in v1.4.0*
+Read data from various file formats and output as string.
+
+**Inputs:**
+- `file_path` (STRING) - Directory path (default: "output")
+- `filename` (STRING) - Full filename with extension (default: "data.json")
+
+**Outputs:**
+- `data` (STRING) - File contents as formatted string
+
+**Features:**
+- ✨ **Auto-format detection:** Based on file extension
+- 📖 **Multiple formats:** JSON, XML, CSV, YAML, or plain text
+- 🔄 **Formatted output:** Pretty-printed JSON for readability
+- 🛡️ **Error handling:** Clear error messages if file not found
+
+**Supported Formats:**
+- `.json` - Parsed and formatted JSON
+- `.xml` - Formatted XML string
+- `.csv` - Converted to JSON array
+- `.yaml`, `.yml` - Converted to JSON
+- Others - Read as plain text
+
+**Use Cases:**
+1. **Load configuration**
+   ```
+   MF Read Data (config.yaml) → Parse settings → Workflow
+   ```
+
+2. **Resume from checkpoint**
+   ```
+   MF Read Data (state.json) → Restore workflow state
+   ```
+
+3. **Process saved data**
+   ```
+   MF Read Data → Transform → MF Save Data (different format)
+   ```
+
+4. **Feed context to LLM**
+   ```
+   MF Read Data → Concatenate → LLM Input
+   ```
+
+---
+
+#### **MF Show Data** ⭐ *NEW in v1.4.0*
+Display string data in an auto-sizing text widget with console output.
+
+**Inputs:**
+- `data` (STRING, force input) - Data to display
+
+**Outputs:**
+- `data` (STRING) - Pass-through data
+
+**Features:**
+- 📺 **Live preview:** Auto-updating text display in node
+- 📏 **Auto-resize:** Widget adjusts to content (3-20 lines)
+- 🖥️ **Console output:** Also prints to ComfyUI console
+- 📝 **Monospace font:** Perfect for code and structured data
+- 🔄 **Pass-through:** Data continues to next node
+
+**UI Elements:**
+- Read-only text widget
+- Auto-sizing (3-20 rows based on content)
+- Monospace font for readability
+- Console logging with dividers
+
+**Use Cases:**
+1. **Debug data flow**
+   ```
+   Any Node → MF Show Data → Visual inspection → Next node
+   ```
+
+2. **Monitor LLM output**
+   ```
+   LLM → MF Show Data → See response → Save/Process
+   ```
+
+3. **Validate transformations**
+   ```
+   Transform → MF Show Data → Verify → Continue
+   ```
+
+4. **Inline documentation**
+   ```
+   Config → MF Show Data → Document workflow behavior
+   ```
+
+---
+
 ## 🎯 Common Workflow Patterns
 
 ### Pattern 1: Infinite Prompt Cycling
@@ -558,6 +696,7 @@ All nodes are organized under `MF_PipoNodes/`:
 - **Math** - Modulo, Modulo Advanced
 - **Sequencing** - Shot Helper, Story Driver
 - **Visualization** - Graph Plotter
+- **Data** - Save Data, Read Data, Show Data
 
 ---
 
@@ -742,7 +881,23 @@ We welcome contributions! Here's how:
 
 ## 📝 Changelog
 
-### v1.3.0 (2025-10-22)
+### v1.4.0 (2025-10-23)
+**New Features:**
+- ⭐ **MF Save Data** - Save data in JSON, XML, CSV, or YAML format
+- ⭐ **MF Read Data** - Read data from multiple file formats
+- ⭐ **MF Show Data** - Display data with auto-sizing text widget
+
+**Technical:**
+- Added PyYAML dependency (requirements.txt)
+- Enhanced data handling capabilities
+- Multi-format serialization support
+
+**Files:**
+- Updated `pipo_nodes_integrated.py` with data nodes
+- Updated `web/pipoNodes.js` with MFShowData widget
+- Added `requirements.txt` for dependencies
+
+### ### v1.3.0 (2025-10-22)
 **New Features:**
 - ⭐ **MF Graph Plotter** - Interactive data visualization with Chart.js
 - ⭐ **MF Story Driver** - Project-based step sequencing with seed management

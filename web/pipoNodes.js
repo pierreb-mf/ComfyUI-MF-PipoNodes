@@ -770,5 +770,43 @@ app.registerExtension({
                 }
             };
         }
+
+        // ====================================================================
+        // MF SHOW DATA
+        // ====================================================================
+        if (nodeData.name === "MFShowData") {
+                    // Add a callback for when the node is executed
+                    const onExecuted = nodeType.prototype.onExecuted;
+                    nodeType.prototype.onExecuted = function (message) {
+                        onExecuted?.apply(this, arguments);
+                        
+                        if (message.text) {
+                            // Find or create the text widget
+                            let textWidget = this.widgets?.find(w => w.name === "display_text");
+                            
+                            if (!textWidget) {
+                                textWidget = ComfyWidgets["STRING"](this, "display_text", ["STRING", { multiline: true }], app).widget;
+                                textWidget.inputEl.readOnly = true;
+                                textWidget.inputEl.style.opacity = 0.7;
+                                textWidget.inputEl.style.fontSize = "10pt";
+                                textWidget.inputEl.style.fontFamily = "monospace";
+                            }
+                            
+                            // Update the text content
+                            const text = message.text[0];
+                            textWidget.value = text;
+                            
+                            // Auto-resize based on content
+                            const lines = text.split('\n').length;
+                            textWidget.inputEl.rows = Math.min(Math.max(lines, 3), 20);
+                            
+                            this.setSize([
+                                Math.max(this.size[0], 400),
+                                this.computeSize()[1]
+                            ]);
+                        }
+                    };
+                }
+        
     },
 });

@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.3.0 (Added Graph Plotter + Story Driver)
+# Version: 1.4.0 (Added Data Nodes: Save, Read, Show)
 # --
 
 import random
@@ -12,6 +12,10 @@ import os
 import datetime
 import json
 import folder_paths
+import csv
+import yaml
+import xml.etree.ElementTree as ET
+from io import StringIO
 
 
 # ============================================================================
@@ -845,6 +849,251 @@ class MF_StoryDriver:
             print(f"❌ [MF_StoryDriver] Error saving state: {e}")
 
 
+
+# ============================================================================
+# DATA NODES
+# ============================================================================
+
+class MFSaveData:
+    """
+    A node that saves string data to various file formats
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "data": ("STRING", {"forceInput": True}),
+                "output_path": ("STRING", {"default": "output"}),
+                "filename": ("STRING", {"default": "data"}),
+                "format": (["json", "xml", "csv", "yaml"],),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("filepath",)
+    FUNCTION = "save_data"
+    CATEGORY = "MF Data"
+    OUTPUT_NODE = True
+
+    def save_data(self, data, output_path, filename, format):
+        try:
+            # Create output directory if it doesn't exist
+            os.makedirs(output_path, exist_ok=True)
+            
+            # Build full filepath
+            filepath = os.path.join(output_path, f"{filename}.{format}")
+            
+            # Save based on format
+            if format == "json":
+                self._save_json(data, filepath)
+            elif format == "xml":
+                self._save_xml(data, filepath)
+            elif format == "csv":
+                self._save_csv(data, filepath)
+            elif format == "yaml":
+                self._save_yaml(data, filepath)
+            
+            print(f"[MF Save Data] Saved to: {filepath}")
+            return (filepath,)
+            
+        except Exception as e:
+            print(f"[MF Save Data] Error: {str(e)}")
+            return (f"Error: {str(e)}",)
+    
+    def _save_json(self, data, filepath):
+        """Save as JSON"""
+        try:
+            # Try to parse if it's already JSON
+            parsed = json.loads(data)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(parsed, f, indent=2, ensure_ascii=False)
+        except json.JSONDecodeError:
+            # If not valid JSON, save as a simple string value
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump({"data": data}, f, indent=2, ensure_ascii=False)
+    
+    def _save_xml(self, data, filepath):
+        """Save as XML"""
+        try:
+            # Try to parse if it's already XML
+            root = ET.fromstring(data)
+            tree = ET.ElementTree(root)
+            ET.indent(tree, space="  ")
+            tree.write(filepath, encoding='utf-8', xml_declaration=True)
+        except ET.ParseError:
+            # If not valid XML, create a simple structure
+            root = ET.Element("data")
+            root.text = data
+            tree = ET.ElementTree(root)
+            ET.indent(tree, space="  ")
+            tree.write(filepath, encoding='utf-8', xml_declaration=True)
+    
+    def _save_csv(self, data, filepath):
+        """Save as CSV"""
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            # Try to parse as JSON array first
+            try:
+                parsed = json.loads(data)
+                if isinstance(parsed, list):
+                    # If it's a list of dicts, write as proper CSV
+                    if parsed and isinstance(parsed[0], dict):
+                        writer.writerow(parsed[0].keys())
+                        for row in parsed:
+                            writer.writerow(row.values())
+                    else:
+                        # List of values
+                        for item in parsed:
+                            writer.writerow([item])
+                else:
+                    # Single value
+                    writer.writerow([data])
+            except:
+                # Just write as single row
+                writer.writerow([data])
+    
+    def _save_yaml(self, data, filepath):
+        """Save as YAML"""
+        try:
+            # Try to parse as JSON first
+            parsed = json.loads(data)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                yaml.dump(parsed, f, default_flow_style=False, allow_unicode=True)
+        except json.JSONDecodeError:
+            # Save as simple string
+            with open(filepath, 'w', encoding='utf-8') as f:
+                yaml.dump({"data": data}, f, default_flow_style=False, allow_unicode=True)
+
+
+class MFReadData:
+    """
+    A node that reads data from various file formats and outputs as string
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "file_path": ("STRING", {"default": "output"}),
+                "filename": ("STRING", {"default": "data.json"}),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("data",)
+    FUNCTION = "read_data"
+    CATEGORY = "MF Data"
+
+    def read_data(self, file_path, filename):
+        try:
+            # Build full filepath
+            filepath = os.path.join(file_path, filename)
+            
+            if not os.path.exists(filepath):
+                error_msg = f"File not found: {filepath}"
+                print(f"[MF Read Data] {error_msg}")
+                return (error_msg,)
+            
+            # Detect format from extension
+            _, ext = os.path.splitext(filename)
+            ext = ext.lower().lstrip('.')
+            
+            # Read based on format
+            if ext == "json":
+                data = self._read_json(filepath)
+            elif ext == "xml":
+                data = self._read_xml(filepath)
+            elif ext == "csv":
+                data = self._read_csv(filepath)
+            elif ext in ["yaml", "yml"]:
+                data = self._read_yaml(filepath)
+            else:
+                # Default: read as plain text
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = f.read()
+            
+            print(f"[MF Read Data] Read from: {filepath}")
+            return (data,)
+            
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            print(f"[MF Read Data] {error_msg}")
+            return (error_msg,)
+    
+    def _read_json(self, filepath):
+        """Read JSON and return as formatted string"""
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return json.dumps(data, indent=2, ensure_ascii=False)
+    
+    def _read_xml(self, filepath):
+        """Read XML and return as string"""
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+        ET.indent(root, space="  ")
+        return ET.tostring(root, encoding='unicode')
+    
+    def _read_csv(self, filepath):
+        """Read CSV and return as JSON string"""
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            data = list(reader)
+            # If no headers detected, read as simple list
+            if not data:
+                f.seek(0)
+                reader = csv.reader(f)
+                data = [row for row in reader]
+            return json.dumps(data, indent=2, ensure_ascii=False)
+    
+    def _read_yaml(self, filepath):
+        """Read YAML and return as JSON string"""
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+            return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+class MFShowData:
+    """
+    A node that displays string data in a text box in the UI
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "data": ("STRING", {"forceInput": True}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            }
+        }
+    
+    INPUT_IS_LIST = False
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("data",)
+    FUNCTION = "show_data"
+    CATEGORY = "MF Data"
+    OUTPUT_NODE = True
+
+    def show_data(self, data, unique_id=None):
+        """Display the data in a text widget and pass it through"""
+        # Print to console
+        print("=" * 50)
+        print("[MF Show Data]")
+        print("=" * 50)
+        print(data)
+        print("=" * 50)
+        
+        # Return data with UI display
+        # This creates a text display in the node
+        return {
+            "ui": {
+                "text": (data,)
+            }, 
+            "result": (data,)
+        }
+
 # ============================================================================
 # NODE REGISTRATION
 # ============================================================================
@@ -859,7 +1108,10 @@ NODE_CLASS_MAPPINGS = {
     "MF_ModuloAdvanced": MF_ModuloAdvanced,
     "MF_ShotHelper": MF_ShotHelper,
     "MF_GraphPlotter": MF_GraphPlotter,
-    "MF_StoryDriver": MF_StoryDriver,  # NEW!
+    "MF_StoryDriver": MF_StoryDriver,
+    "MF_SaveData": MFSaveData,  # NEW in v1.4.0!
+    "MF_ReadData": MFReadData,  # NEW in v1.4.0!
+    "MF_ShowData": MFShowData,  # NEW in v1.4.0!
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -872,7 +1124,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MF_ModuloAdvanced": "MF Modulo Advanced",
     "MF_ShotHelper": "MF Shot Helper",
     "MF_GraphPlotter": "MF Graph Plotter",
-    "MF_StoryDriver": "MF Story Driver",  # NEW!
+    "MF_StoryDriver": "MF Story Driver",
+    "MF_SaveData": "MF Save Data",  # NEW in v1.4.0!
+    "MF_ReadData": "MF Read Data",  # NEW in v1.4.0!
+    "MF_ShowData": "MF Show Data",  # NEW in v1.4.0!
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
