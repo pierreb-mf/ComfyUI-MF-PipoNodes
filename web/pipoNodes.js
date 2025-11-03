@@ -815,6 +815,319 @@ app.registerExtension({
                 }
             };
         }
+        
+        // ====================================================================
+        // CUSTOM DROPDOWN MENU
+        // ====================================================================
+        if (nodeData.name === "MF_CustomDropdownMenu") {
+            const onNodeCreated = nodeType.prototype.onNodeCreated;
+            
+            nodeType.prototype.onNodeCreated = function() {
+                // Call original if it exists
+                onNodeCreated?.apply(this, arguments);
+                
+                // Get initial options from hidden field or use defaults
+                let optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
+                let initialOptions = ["low", "medium", "high", "ultra"];
+                let initialValue = "medium";
+                
+                if (optionsWidget && optionsWidget.value && optionsWidget.value.trim()) {
+                    const savedOptions = this.parseOptions(optionsWidget.value);
+                    if (savedOptions.length > 0) {
+                        initialOptions = savedOptions;
+                        initialValue = savedOptions[0];
+                    }
+                }
+                
+                // Remove the default STRING widget for selection
+                const selectionIndex = this.widgets.findIndex(w => w.name === "selection");
+                if (selectionIndex !== -1) {
+                    this.widgets.splice(selectionIndex, 1);
+                }
+                
+                // Create a proper COMBO widget
+                const comboWidget = this.addWidget(
+                    "combo",
+                    "selection",
+                    initialValue,
+                    (value) => {
+                        // Callback when value changes
+                    },
+                    { values: initialOptions }
+                );
+                
+                // Move combo widget to the beginning (before EDIT button)
+                if (this.widgets.length > 1) {
+                    this.widgets.splice(0, 0, this.widgets.pop());
+                }
+                
+                // Add the EDIT button widget
+                const editButton = this.addWidget(
+                    "button",
+                    "EDIT",
+                    null,
+                    () => {
+                        this.showEditDialog();
+                    }
+                );
+                
+                // Style the button to make it more prominent
+                editButton.serialize = false; // Don't serialize the button itself
+            };
+            
+            /**
+             * Parse options string into array
+             * Format: "option1\noption2\noption3" or "option1,option2,option3"
+             */
+            nodeType.prototype.parseOptions = function(optionsString) {
+                if (!optionsString || typeof optionsString !== 'string') {
+                    return ["low", "medium", "high", "ultra"];
+                }
+                
+                // Split by newline or comma
+                let options = optionsString.split(/[\n,]/)
+                    .map(opt => opt.trim())
+                    .filter(opt => opt.length > 0);
+                
+                // Remove duplicates while preserving order
+                options = [...new Set(options)];
+                
+                // Ensure at least one option exists
+                if (options.length === 0) {
+                    options = ["low", "medium", "high", "ultra"];
+                }
+                
+                return options;
+            };
+            
+            /**
+             * Convert options array to string for storage
+             */
+            nodeType.prototype.stringifyOptions = function(optionsArray) {
+                return optionsArray.join('\n');
+            };
+            
+            /**
+             * Update the dropdown widget with new options
+             */
+            nodeType.prototype.updateDropdownOptions = function(newOptions) {
+                const selectionWidget = this.widgets.find(w => w.name === "selection");
+                let optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
+                
+                if (!selectionWidget) {
+                    console.error("Selection widget not found");
+                    return;
+                }
+                
+                // Update the combo widget options
+                if (selectionWidget.type === "combo") {
+                    selectionWidget.options.values = newOptions;
+                    
+                    // Set the current value to the first option if current value doesn't exist
+                    if (!newOptions.includes(selectionWidget.value)) {
+                        selectionWidget.value = newOptions[0];
+                    }
+                }
+                
+                // Store options in hidden widget for workflow persistence
+                if (optionsWidget) {
+                    optionsWidget.value = this.stringifyOptions(newOptions);
+                }
+                
+                // Force UI update
+                if (this.graph) {
+                    this.graph.setDirtyCanvas(true, true);
+                }
+            };
+            
+            /**
+             * Show the edit dialog popup
+             */
+            nodeType.prototype.showEditDialog = function() {
+                const selectionWidget = this.widgets.find(w => w.name === "selection");
+                const currentOptions = selectionWidget.options.values;
+                
+                // Create modal backdrop
+                const backdrop = document.createElement("div");
+                backdrop.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 9998;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+                
+                // Create dialog container
+                const dialog = document.createElement("div");
+                dialog.style.cssText = `
+                    background: #2b2b2b;
+                    padding: 25px;
+                    border-radius: 8px;
+                    border: 2px solid #555;
+                    min-width: 400px;
+                    max-width: 600px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+                    color: #e0e0e0;
+                `;
+                
+                // Title
+                const title = document.createElement("h3");
+                title.textContent = "Edit Dropdown Options";
+                title.style.cssText = `
+                    margin: 0 0 15px 0;
+                    color: #fff;
+                    font-size: 18px;
+                `;
+                
+                // Instructions
+                const instructions = document.createElement("p");
+                instructions.textContent = "Enter one option per line:";
+                instructions.style.cssText = `
+                    margin: 0 0 10px 0;
+                    font-size: 14px;
+                    color: #bbb;
+                `;
+                
+                // Textarea for input
+                const textarea = document.createElement("textarea");
+                textarea.value = currentOptions.join('\n');
+                textarea.style.cssText = `
+                    width: 100%;
+                    height: 200px;
+                    padding: 10px;
+                    font-family: monospace;
+                    font-size: 14px;
+                    background: #1a1a1a;
+                    color: #e0e0e0;
+                    border: 1px solid #555;
+                    border-radius: 4px;
+                    resize: vertical;
+                    box-sizing: border-box;
+                `;
+                textarea.placeholder = "low\nmedium\nhigh\nultra";
+                
+                // Validation message
+                const validationMsg = document.createElement("div");
+                validationMsg.style.cssText = `
+                    margin-top: 8px;
+                    font-size: 12px;
+                    color: #ff6b6b;
+                    min-height: 18px;
+                `;
+                
+                // Button container
+                const buttonContainer = document.createElement("div");
+                buttonContainer.style.cssText = `
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    margin-top: 15px;
+                `;
+                
+                // Cancel button
+                const cancelButton = document.createElement("button");
+                cancelButton.textContent = "Cancel";
+                cancelButton.style.cssText = `
+                    padding: 8px 20px;
+                    background: #444;
+                    color: #e0e0e0;
+                    border: 1px solid #666;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                `;
+                cancelButton.onmouseover = () => cancelButton.style.background = "#555";
+                cancelButton.onmouseout = () => cancelButton.style.background = "#444";
+                cancelButton.onclick = () => {
+                    document.body.removeChild(backdrop);
+                };
+                
+                // OK button
+                const okButton = document.createElement("button");
+                okButton.textContent = "OK";
+                okButton.style.cssText = `
+                    padding: 8px 20px;
+                    background: #4a90e2;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: bold;
+                `;
+                okButton.onmouseover = () => okButton.style.background = "#357abd";
+                okButton.onmouseout = () => okButton.style.background = "#4a90e2";
+                okButton.onclick = () => {
+                    const newOptions = this.parseOptions(textarea.value);
+                    
+                    // Validate
+                    if (newOptions.length === 0) {
+                        validationMsg.textContent = "⚠️ At least one option is required";
+                        return;
+                    }
+                    
+                    // Update dropdown
+                    this.updateDropdownOptions(newOptions);
+                    
+                    // Close dialog
+                    document.body.removeChild(backdrop);
+                };
+                
+                // Real-time validation
+                textarea.oninput = () => {
+                    const options = this.parseOptions(textarea.value);
+                    if (options.length === 0) {
+                        validationMsg.textContent = "⚠️ At least one option is required";
+                    } else {
+                        validationMsg.textContent = `✓ ${options.length} option${options.length !== 1 ? 's' : ''} (duplicates will be removed)`;
+                        validationMsg.style.color = "#6bff6b";
+                    }
+                };
+                
+                // Trigger initial validation
+                textarea.oninput();
+                
+                // Assemble dialog
+                buttonContainer.appendChild(cancelButton);
+                buttonContainer.appendChild(okButton);
+                
+                dialog.appendChild(title);
+                dialog.appendChild(instructions);
+                dialog.appendChild(textarea);
+                dialog.appendChild(validationMsg);
+                dialog.appendChild(buttonContainer);
+                
+                backdrop.appendChild(dialog);
+                document.body.appendChild(backdrop);
+                
+                // Focus textarea and select all for easy editing
+                setTimeout(() => {
+                    textarea.focus();
+                    textarea.select();
+                }, 100);
+                
+                // Close on backdrop click
+                backdrop.onclick = (e) => {
+                    if (e.target === backdrop) {
+                        document.body.removeChild(backdrop);
+                    }
+                };
+                
+                // Close on Escape key
+                const escapeHandler = (e) => {
+                    if (e.key === "Escape") {
+                        document.body.removeChild(backdrop);
+                        document.removeEventListener("keydown", escapeHandler);
+                    }
+                };
+                document.addEventListener("keydown", escapeHandler);
+            };
+        }
 
     },
 });

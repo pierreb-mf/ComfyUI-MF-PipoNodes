@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.4.4 (Strip markdown fences + Fix widget display)
+# Version: 1.5.0 (Added Custom Dropdown Menu)
 # --
 
 import random
@@ -1131,6 +1131,55 @@ class MFShowData:
             "result": (cleaned_data,)
         }
 
+
+# ============================================================================
+# CUSTOM DROPDOWN MENU
+# ============================================================================
+
+class MFCustomDropdownMenu:
+    """
+    A node with a customizable dropdown menu.
+    The dropdown options can be edited via an EDIT button in the UI.
+    Options are stored per-node and persist in the workflow file.
+    Default options: low, medium, high, ultra (like video game graphics settings)
+    """
+    
+    CATEGORY = "MF_PipoNodes/Utilities"
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                # Changed to STRING to accept any value
+                # The dropdown is created and managed by JavaScript
+                "selection": ("STRING", {"default": "medium"}),
+            },
+            "hidden": {
+                # Store the options list in a hidden field
+                # This gets saved in the workflow and loaded automatically
+                "dropdown_options": ("STRING", {"default": "low\nmedium\nhigh\nultra"}),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("selected_value",)
+    FUNCTION = "execute"
+    OUTPUT_NODE = False
+    
+    def execute(self, selection, dropdown_options="low\nmedium\nhigh\nultra"):
+        """
+        Returns the selected dropdown value as a string.
+        
+        Args:
+            selection: The currently selected option from the dropdown
+            dropdown_options: Hidden field containing all options (for workflow persistence)
+        
+        Returns:
+            Tuple containing the selected string value
+        """
+        return (selection,)
+
+
 # ============================================================================
 # NODE REGISTRATION
 # ============================================================================
@@ -1149,6 +1198,7 @@ NODE_CLASS_MAPPINGS = {
     "MF_SaveData": MFSaveData,  # NEW in v1.4.0!
     "MF_ReadData": MFReadData,  # NEW in v1.4.0!
     "MF_ShowData": MFShowData,  # NEW in v1.4.0!
+    "MF_CustomDropdownMenu": MFCustomDropdownMenu,  # NEW in v1.5.0!
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1165,6 +1215,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MF_SaveData": "MF Save Data",  # NEW in v1.4.0!
     "MF_ReadData": "MF Read Data",  # NEW in v1.4.0!
     "MF_ShowData": "MF Show Data",  # NEW in v1.4.0!
+    "MF_CustomDropdownMenu": "MF Custom Dropdown Menu",  # NEW in v1.5.0!
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
