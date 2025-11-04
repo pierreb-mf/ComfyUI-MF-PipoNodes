@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.5.1 (Fixed MF_LogFile subfolder support - copied MF_SaveData path handling)
+# Version: 1.5.2 (Fixed Custom Dropdown Menu persistence - moved dropdown_options from hidden to required)
 # --
 
 import random
@@ -1168,12 +1168,14 @@ class MFCustomDropdownMenu:
                 # Changed to STRING to accept any value
                 # The dropdown is created and managed by JavaScript
                 "selection": ("STRING", {"default": "medium"}),
+                # CRITICAL: Must be in "required" or "optional" to serialize!
+                # Using multiline=False and forceInput=False keeps it as a widget
+                # JavaScript will hide it visually while keeping it serializable
+                "dropdown_options": ("STRING", {
+                    "default": "low\nmedium\nhigh\nultra",
+                    "multiline": False,
+                }),
             },
-            "hidden": {
-                # Store the options list in a hidden field
-                # This gets saved in the workflow and loaded automatically
-                "dropdown_options": ("STRING", {"default": "low\nmedium\nhigh\nultra"}),
-            }
         }
     
     RETURN_TYPES = ("STRING",)
