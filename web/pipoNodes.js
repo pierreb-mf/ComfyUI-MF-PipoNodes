@@ -818,7 +818,8 @@ app.registerExtension({
         
         // ====================================================================
 // ====================================================================
-// CUSTOM DROPDOWN MENU - v1.5.2 FINAL FIX (Preserves selection on load)
+// CUSTOM DROPDOWN MENU - v1.5.2 REAL FINAL FIX
+// Fixed: Options list not loading from saved workflows
 // ====================================================================
 if (nodeData.name === "MF_CustomDropdownMenu") {
     const onNodeCreated = nodeType.prototype.onNodeCreated;
@@ -827,48 +828,19 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
         // Call original if it exists
         onNodeCreated?.apply(this, arguments);
         
-        // CRITICAL: Find the dropdown_options widget that Python created
+        // DON'T try to read saved values here - they aren't loaded yet!
+        // Just use defaults for now, onConfigure will restore saved values
+        
         let optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
         
-        let initialOptions = ["low", "medium", "high", "ultra"];
-        let initialValue = "medium";
-        
+        // Hide the options widget visually
         if (optionsWidget) {
-            // HIDE the widget visually but keep it serializable
             optionsWidget.computeSize = function() {
                 return [0, -4];
             };
             
             if (optionsWidget.inputEl) {
                 optionsWidget.inputEl.style.display = "none";
-            }
-            
-            // Read saved options
-            if (optionsWidget.value && optionsWidget.value.trim()) {
-                const savedOptions = this.parseOptions(optionsWidget.value);
-                if (savedOptions.length > 0) {
-                    initialOptions = savedOptions;
-                    initialValue = savedOptions[0];
-                    console.log(`[MF_CustomDropdownMenu] Loaded ${savedOptions.length} options:`, savedOptions);
-                }
-            }
-        } else {
-            console.warn("[MF_CustomDropdownMenu] dropdown_options widget not found!");
-        }
-        
-        // FIX: Preserve the selection value BEFORE removing the widget
-        const oldSelectionWidget = this.widgets.find(w => w.name === "selection");
-        let savedSelection = initialValue; // default
-        
-        if (oldSelectionWidget && oldSelectionWidget.value) {
-            // If loading from saved workflow, preserve the saved selection
-            savedSelection = oldSelectionWidget.value;
-            console.log(`[MF_CustomDropdownMenu] Preserving saved selection: ${savedSelection}`);
-            
-            // Make sure the saved selection is in the options list
-            if (!initialOptions.includes(savedSelection)) {
-                console.warn(`[MF_CustomDropdownMenu] Saved selection "${savedSelection}" not in options, using first option`);
-                savedSelection = initialOptions[0];
             }
         }
         
@@ -878,15 +850,15 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
             this.widgets.splice(selectionIndex, 1);
         }
         
-        // Create a proper COMBO widget with the preserved value
+        // Create combo widget with defaults (will be updated by onConfigure)
         const comboWidget = this.addWidget(
             "combo",
             "selection",
-            savedSelection,  // ✅ Use preserved value, not default!
+            "medium",  // Default, will be replaced by onConfigure
             (value) => {
                 console.log(`[MF_CustomDropdownMenu] Selection changed to: ${value}`);
             },
-            { values: initialOptions }
+            { values: ["low", "medium", "high", "ultra"] }  // Defaults
         );
         
         // Move widgets to proper order
@@ -912,8 +884,8 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
     };
     
     /**
-     * Restore dropdown options when loading from saved workflow
-     * This provides additional safety in case onNodeCreated didn't catch it
+     * CRITICAL: This is where saved values are actually restored!
+     * onConfigure runs AFTER widgets have their saved values applied
      */
     const originalConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function(info) {
@@ -921,37 +893,48 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
             originalConfigure.apply(this, arguments);
         }
         
-        // Double-check values are correct after a short delay
-        setTimeout(() => {
-            const optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
-            const selectionWidget = this.widgets.find(w => w.name === "selection");
+        // NOW we can read the saved values - they've been applied to widgets
+        const optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
+        const selectionWidget = this.widgets.find(w => w.name === "selection");
+        
+        if (!optionsWidget || !selectionWidget) {
+            console.error("[MF_CustomDropdownMenu] Widgets not found in onConfigure");
+            return;
+        }
+        
+        // Read from widgets_values in the workflow data
+        const savedOptionsString = info.widgets_values && info.widgets_values[1];
+        const savedSelection = info.widgets_values && info.widgets_values[0];
+        
+        console.log(`[MF_CustomDropdownMenu] onConfigure - savedOptionsString:`, savedOptionsString ? savedOptionsString.substring(0, 50) : 'none');
+        console.log(`[MF_CustomDropdownMenu] onConfigure - savedSelection:`, savedSelection);
+        
+        if (savedOptionsString && savedOptionsString.trim()) {
+            const savedOptions = this.parseOptions(savedOptionsString);
             
-            if (optionsWidget && optionsWidget.value && optionsWidget.value.trim()) {
-                const savedOptions = this.parseOptions(optionsWidget.value);
-                
-                if (savedOptions.length > 0 && selectionWidget && selectionWidget.type === "combo") {
-                    // Update options if they're different
-                    const currentOptions = selectionWidget.options.values;
-                    const optionsChanged = JSON.stringify(currentOptions) !== JSON.stringify(savedOptions);
+            if (savedOptions.length > 0) {
+                // Update the combo widget with saved options
+                if (selectionWidget.type === "combo") {
+                    selectionWidget.options.values = savedOptions;
+                    console.log(`[MF_CustomDropdownMenu] Restored ${savedOptions.length} options:`, savedOptions);
                     
-                    if (optionsChanged) {
-                        selectionWidget.options.values = savedOptions;
-                        console.log(`[MF_CustomDropdownMenu] onConfigure: Updated options to ${savedOptions.length} items`);
-                    }
-                    
-                    // Restore selection if needed
-                    if (info.widgets_values && info.widgets_values.length > 0) {
-                        const savedSelection = info.widgets_values[0];
-                        if (savedSelection && savedOptions.includes(savedSelection)) {
-                            if (selectionWidget.value !== savedSelection) {
-                                selectionWidget.value = savedSelection;
-                                console.log(`[MF_CustomDropdownMenu] onConfigure: Restored selection to "${savedSelection}"`);
-                            }
-                        }
+                    // Restore the selection if it's in the options
+                    if (savedSelection && savedOptions.includes(savedSelection)) {
+                        selectionWidget.value = savedSelection;
+                        console.log(`[MF_CustomDropdownMenu] Restored selection: "${savedSelection}"`);
+                    } else {
+                        // Selection not in options, use first option
+                        selectionWidget.value = savedOptions[0];
+                        console.log(`[MF_CustomDropdownMenu] Selection not in options, using first: "${savedOptions[0]}"`);
                     }
                 }
+                
+                // Update the hidden widget too
+                optionsWidget.value = savedOptionsString;
             }
-        }, 10); // Small delay to ensure everything is ready
+        } else {
+            console.log(`[MF_CustomDropdownMenu] No saved options found, using defaults`);
+        }
     };
     
     /**
@@ -968,8 +951,15 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
         
         if (optionsWidget && selectionWidget && selectionWidget.type === "combo") {
             const currentOptions = selectionWidget.options.values;
-            optionsWidget.value = this.stringifyOptions(currentOptions);
-            console.log(`[MF_CustomDropdownMenu] onSerialize: Saved ${currentOptions.length} options, selection="${selectionWidget.value}"`);
+            const optionsString = this.stringifyOptions(currentOptions);
+            
+            // Make sure the widget has the current options
+            optionsWidget.value = optionsString;
+            
+            console.log(`[MF_CustomDropdownMenu] onSerialize:`);
+            console.log(`  - Options (${currentOptions.length}):`, currentOptions);
+            console.log(`  - Selection: "${selectionWidget.value}"`);
+            console.log(`  - Saved to widget: "${optionsString.substring(0, 50)}..."`);
         }
     };
     
@@ -1023,9 +1013,7 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
         
         if (optionsWidget) {
             optionsWidget.value = this.stringifyOptions(newOptions);
-            console.log(`[MF_CustomDropdownMenu] Updated and saved ${newOptions.length} options:`, newOptions);
-        } else {
-            console.error("[MF_CustomDropdownMenu] dropdown_options widget not found!");
+            console.log(`[MF_CustomDropdownMenu] Updated ${newOptions.length} options:`, newOptions);
         }
         
         if (this.graph) {
@@ -1040,7 +1028,13 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
      */
     nodeType.prototype.showEditDialog = function() {
         const selectionWidget = this.widgets.find(w => w.name === "selection");
-        const currentOptions = selectionWidget.options.values;
+        
+        if (!selectionWidget || !selectionWidget.options) {
+            console.error("[MF_CustomDropdownMenu] Selection widget or options not found");
+            return;
+        }
+        
+        const currentOptions = selectionWidget.options.values || ["low", "medium", "high", "ultra"];
         
         const backdrop = document.createElement("div");
         backdrop.style.cssText = `
@@ -1164,6 +1158,7 @@ if (nodeData.name === "MF_CustomDropdownMenu") {
             const options = this.parseOptions(textarea.value);
             if (options.length === 0) {
                 validationMsg.textContent = "⚠️ At least one option is required";
+                validationMsg.style.color = "#ff6b6b";
             } else {
                 validationMsg.textContent = `✓ ${options.length} option${options.length !== 1 ? 's' : ''} (duplicates will be removed)`;
                 validationMsg.style.color = "#6bff6b";
