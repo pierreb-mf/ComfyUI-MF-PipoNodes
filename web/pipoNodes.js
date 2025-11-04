@@ -836,7 +836,10 @@ app.registerExtension({
                     if (savedOptions.length > 0) {
                         initialOptions = savedOptions;
                         initialValue = savedOptions[0];
+                        console.log(`[MF_CustomDropdownMenu] Loaded ${savedOptions.length} options from widget:`, savedOptions);
                     }
+                } else {
+                    console.log(`[MF_CustomDropdownMenu] Using default options (no saved data found)`);
                 }
                 
                 // Remove the default STRING widget for selection
@@ -873,6 +876,37 @@ app.registerExtension({
                 
                 // Style the button to make it more prominent
                 editButton.serialize = false; // Don't serialize the button itself
+            };
+            
+            /**
+             * Restore dropdown options when loading from saved workflow
+             * This is critical - without it, custom options are lost on reload!
+             */
+            nodeType.prototype.onConfigure = function(info) {
+                // Get the saved dropdown_options value from the workflow
+                const optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
+                
+                if (optionsWidget && optionsWidget.value && optionsWidget.value.trim()) {
+                    const savedOptions = this.parseOptions(optionsWidget.value);
+                    
+                    if (savedOptions.length > 0) {
+                        // Find the selection combo widget
+                        const selectionWidget = this.widgets.find(w => w.name === "selection");
+                        
+                        if (selectionWidget && selectionWidget.type === "combo") {
+                            // Restore the options
+                            selectionWidget.options.values = savedOptions;
+                            
+                            // Restore the selected value if it's in the options
+                            // Otherwise default to first option
+                            if (selectionWidget.value && !savedOptions.includes(selectionWidget.value)) {
+                                selectionWidget.value = savedOptions[0];
+                            }
+                            
+                            console.log(`[MF_CustomDropdownMenu] Restored ${savedOptions.length} options from workflow`);
+                        }
+                    }
+                }
             };
             
             /**
@@ -915,7 +949,7 @@ app.registerExtension({
                 let optionsWidget = this.widgets.find(w => w.name === "dropdown_options");
                 
                 if (!selectionWidget) {
-                    console.error("Selection widget not found");
+                    console.error("[MF_CustomDropdownMenu] Selection widget not found");
                     return;
                 }
                 
@@ -932,6 +966,9 @@ app.registerExtension({
                 // Store options in hidden widget for workflow persistence
                 if (optionsWidget) {
                     optionsWidget.value = this.stringifyOptions(newOptions);
+                    console.log(`[MF_CustomDropdownMenu] Saved ${newOptions.length} options to hidden widget:`, newOptions);
+                } else {
+                    console.warn("[MF_CustomDropdownMenu] dropdown_options widget not found - options may not persist!");
                 }
                 
                 // Force UI update

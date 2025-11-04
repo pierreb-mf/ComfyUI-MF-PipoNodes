@@ -4,7 +4,7 @@
 # Author: Pierre Biet | Moment Factory | 2025
 # 
 # Description: Collection of utility nodes for ComfyUI workflows
-# Version: 1.5.0 (Added Custom Dropdown Menu)
+# Version: 1.5.1 (Fixed MF_LogFile subfolder support - copied MF_SaveData path handling)
 # --
 
 import random
@@ -171,6 +171,7 @@ class MF_LineSelect:
 class MF_LogFile:
     """
     A ComfyUI node that writes timestamped log entries to a text file.
+    v1.5.1: Fixed subfolder support by copying MF_SaveData's path handling
     """
     
     CATEGORY = "MF_PipoNodes/Logging"
@@ -187,7 +188,7 @@ class MF_LogFile:
                 "log_entry": ("STRING", {"multiline": True}),
             },
             "optional": {
-                "save_log_path": ("STRING", {"default": folder_paths.get_output_directory()}),
+                "save_log_path": ("STRING", {"default": "output"}),
                 "log_file_name": ("STRING", {"default": "logfile"}),
             }
         }
@@ -201,18 +202,31 @@ class MF_LogFile:
     def IS_CHANGED(cls, **kwargs):
         return float("nan")
     
-    def write_log(self, log_entry, save_log_path=None, log_file_name=None):
+    def write_log(self, log_entry, save_log_path="output", log_file_name="logfile"):
         """Write a timestamped log entry to file."""
-        log_file_path = _get_log_file_path(save_log_path, log_file_name, self.output_dir)
-        
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-        
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        formatted_entry = f"[{timestamp}] {log_entry}\n\n"
-        
         try:
-            # Write new entry
+            # Normalize inputs (same as before)
+            if save_log_path is None or save_log_path.strip() == "":
+                save_log_path = self.output_dir
+            
+            if log_file_name is None or log_file_name.strip() == "":
+                log_file_name = "logfile"
+            
+            # Create output directory if it doesn't exist (SAME AS MF_SaveData)
+            os.makedirs(save_log_path, exist_ok=True)
+            
+            # Add .txt extension if needed
+            if not log_file_name.lower().endswith(".txt"):
+                log_file_name += ".txt"
+            
+            # Build full filepath (SAME AS MF_SaveData pattern)
+            log_file_path = os.path.join(save_log_path, log_file_name)
+            
+            # Format entry with timestamp
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            formatted_entry = f"[{timestamp}] {log_entry}\n\n"
+            
+            # Write new entry (append mode to preserve log history)
             with open(log_file_path, "a", encoding="utf-8") as f:
                 f.write(formatted_entry)
             
@@ -220,7 +234,7 @@ class MF_LogFile:
             with open(log_file_path, "r", encoding="utf-8") as f:
                 self.last_log_content = f.read()
             
-            print(f"📝 [MF_LogFile] Wrote entry to {os.path.basename(log_file_path)}")
+            print(f"📝 [MF_LogFile] Wrote entry to {log_file_path}")
             
             return {
                 "ui": {
@@ -228,6 +242,7 @@ class MF_LogFile:
                 },
                 "result": (self.last_log_content,)
             }
+            
         except Exception as e:
             error_message = f"❌ Error writing log: {str(e)}"
             print(f"[MF_LogFile] {error_message}")
