@@ -19,7 +19,7 @@ if os.path.exists(integrated_file):
     size = os.path.getsize(integrated_file)
     print(f"[MF_PipoNodes] ✅ Found pipo_nodes_integrated.py ({size:,} bytes)")
 else:
-    print(f"[MF_PipoNodes] ❌ ERROR: pipo_nodes_integrated.py NOT FOUND!")
+    print("[MF_PipoNodes] ❌ ERROR: pipo_nodes_integrated.py NOT FOUND!")
     print(f"[MF_PipoNodes] Expected at: {integrated_file}")
 
 server_file = os.path.join(module_dir, "pipo_nodes_server.py")
@@ -27,16 +27,16 @@ if os.path.exists(server_file):
     size = os.path.getsize(server_file)
     print(f"[MF_PipoNodes] ✅ Found pipo_nodes_server.py ({size:,} bytes)")
 else:
-    print(f"[MF_PipoNodes] ❌ ERROR: pipo_nodes_server.py NOT FOUND!")
+    print("[MF_PipoNodes] ❌ ERROR: pipo_nodes_server.py NOT FOUND!")
 
 web_dir = os.path.join(module_dir, "web")
 if os.path.exists(web_dir):
-    print(f"[MF_PipoNodes] ✅ Found web/ directory")
+    print("[MF_PipoNodes] ✅ Found web/ directory")
     js_files = [f for f in os.listdir(web_dir) if f.endswith('.js')]
     for js_file in js_files:
         print(f"[MF_PipoNodes]   - {js_file}")
 else:
-    print(f"[MF_PipoNodes] ⚠️  Warning: web/ directory not found")
+    print("[MF_PipoNodes] ⚠️  Warning: web/ directory not found")
 
 print("-" * 70)
 

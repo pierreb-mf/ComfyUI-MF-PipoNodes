@@ -15,7 +15,6 @@ import folder_paths
 import csv
 import yaml
 import xml.etree.ElementTree as ET
-from io import StringIO
 
 
 # ============================================================================
