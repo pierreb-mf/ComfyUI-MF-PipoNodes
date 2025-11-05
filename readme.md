@@ -41,7 +41,6 @@ pip install -r requirements.txt
 
 ### 🎲 Random Category
 
----
 #### MF Dice Roller
 
 <details>
@@ -74,9 +73,9 @@ Use for seed or Line Select index
 
 </details>
 
-### 🔧 Utilities Category
-
 ---
+
+### 🔧 Utilities Category
 
 #### MF Line Counter
 
@@ -146,9 +145,9 @@ Output: "mountain"
 
 </details>
 
-### 📝 Logging Category
-
 ---
+
+### 📝 Logging Category
 
 #### MF Log File
 
@@ -214,9 +213,9 @@ Read the contents of a log file.
 
 </details>
 
-### 🔢 Math Category
-
 ---
+
+### 🔢 Math Category
 
 #### MF Modulo
 
@@ -286,9 +285,9 @@ Steps 10-14, Mod 5: Cycle 2, Results 0-4
 
 </details>
 
-### 🎬 Sequencing Category
-
 ---
+
+### 🎬 Sequencing Category
 
 #### MF Shot Helper
 
@@ -437,9 +436,9 @@ After reset (randomize ON):
 
 </details>
 
-### 📈 Visualization Category
-
 ---
+
+### 📈 Visualization Category
 
 #### MF Graph Plotter
 
@@ -540,9 +539,9 @@ Loop Counter (0-10)
 
 </details>
 
-### 💾 Data Category
-
 ---
+
+### 💾 Data Category
 
 #### MF Save Data
 
