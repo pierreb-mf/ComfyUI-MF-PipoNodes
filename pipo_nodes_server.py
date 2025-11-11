@@ -12,7 +12,7 @@ import os
 from .pipo_nodes_integrated import MF_GraphPlotter, MF_StoryDriver
 
 
-@server.PromptServer.instance.routes.post("/graph_plotter/reset")
+@server.PromptServer.instance.routes.post("/api/graph_plotter/reset")
 async def reset_graph_plotter(request):
     """
     API endpoint to reset a Graph Plotter node's data
@@ -37,7 +37,7 @@ async def reset_graph_plotter(request):
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
 
-@server.PromptServer.instance.routes.post("/graph_plotter/save_image")
+@server.PromptServer.instance.routes.post("/api/graph_plotter/save_image")
 async def save_graph_image(request):
     """
     API endpoint to save graph image from base64 data to user-selected path
@@ -80,7 +80,7 @@ async def save_graph_image(request):
 # ============================================================================
 
 
-@server.PromptServer.instance.routes.post("/story_driver/reset")
+@server.PromptServer.instance.routes.post("/api/story_driver/reset")
 async def reset_story_driver(request):
     """
     API endpoint to reset a Story Driver project

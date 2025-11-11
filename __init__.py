@@ -73,12 +73,11 @@ print("-" * 70)
 
 # Test 3: Try importing server endpoints
 print("[MF_PipoNodes] Attempting to import server endpoints...")
-spec = importlib.util.find_spec("pipo_nodes_server")
-
-if spec:
-    print("[MF_PipoNodes] ✅ Server endpoints loaded")
-else:
-    print("[MF_PipoNodes] ⚠️  Warning: Could not load server.")
+try:
+    from . import pipo_nodes_server
+    print("[MF_PipoNodes] ✅ Server endpoints loaded successfully")
+except Exception as e:
+    print(f"[MF_PipoNodes] ⚠️  Warning: Could not load server: {e}")
     print("[MF_PipoNodes] Reset buttons may not work, but nodes will function")
 
 print("=" * 70)
